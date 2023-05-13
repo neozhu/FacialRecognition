@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CleanArchitecture.Blazor.Migrators.SqLite.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230428015135_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20230513111228_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -291,6 +291,53 @@ namespace CleanArchitecture.Blazor.Migrators.SqLite.Migrations
                     b.ToTable("Tenants");
                 });
 
+            modelBuilder.Entity("CleanArchitecture.Blazor.Domain.Entities.Visitor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DateOfVisit")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Documentation")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Interviewee")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PurposeOfVisit")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Visitors");
+                });
+
             modelBuilder.Entity("CleanArchitecture.Blazor.Domain.Identity.ApplicationRole", b =>
                 {
                     b.Property<string>("Id")
@@ -531,7 +578,8 @@ namespace CleanArchitecture.Blazor.Migrators.SqLite.Migrations
                 {
                     b.HasOne("CleanArchitecture.Blazor.Domain.Identity.ApplicationUser", "Owner")
                         .WithMany()
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Owner");
                 });
@@ -540,11 +588,13 @@ namespace CleanArchitecture.Blazor.Migrators.SqLite.Migrations
                 {
                     b.HasOne("CleanArchitecture.Blazor.Domain.Identity.ApplicationUser", "Owner")
                         .WithMany()
-                        .HasForeignKey("CreatedBy");
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CleanArchitecture.Blazor.Domain.Identity.ApplicationUser", "Editor")
                         .WithMany()
-                        .HasForeignKey("LastModifiedBy");
+                        .HasForeignKey("LastModifiedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CleanArchitecture.Blazor.Domain.Entities.Tenant", "Tenant")
                         .WithMany()

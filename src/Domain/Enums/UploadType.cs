@@ -7,6 +7,8 @@ namespace CleanArchitecture.Blazor.Domain.Enums;
 
 public enum UploadType : byte
 {
+    [Description(@"Photos")]
+    Photos,
     [Description(@"Products")]
     Product,
     [Description(@"ProfilePictures")]

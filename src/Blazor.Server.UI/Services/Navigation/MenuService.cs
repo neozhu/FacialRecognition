@@ -24,7 +24,7 @@ public class MenuService : IMenuService
                         new()
                         {
                             Title = "Facial Recognition",
-                            Href = "/pages/products",
+                            Href = "/pages/visitors",
                             PageStatus = PageStatus.Completed
                         },
                         new()

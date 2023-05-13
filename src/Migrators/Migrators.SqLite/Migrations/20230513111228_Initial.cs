@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CleanArchitecture.Blazor.Migrators.SqLite.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -166,6 +166,29 @@ namespace CleanArchitecture.Blazor.Migrators.SqLite.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Visitors",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Name = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    Interviewee = table.Column<string>(type: "TEXT", nullable: true),
+                    Description = table.Column<string>(type: "TEXT", nullable: true),
+                    PurposeOfVisit = table.Column<string>(type: "TEXT", nullable: true),
+                    Documentation = table.Column<string>(type: "TEXT", nullable: true),
+                    DateOfVisit = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    Status = table.Column<string>(type: "TEXT", nullable: false),
+                    Created = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    CreatedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    LastModified = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    LastModifiedBy = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Visitors", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetRoleClaims",
                 columns: table => new
                 {
@@ -296,7 +319,8 @@ namespace CleanArchitecture.Blazor.Migrators.SqLite.Migrations
                         name: "FK_AuditTrails_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -325,12 +349,14 @@ namespace CleanArchitecture.Blazor.Migrators.SqLite.Migrations
                         name: "FK_Documents_AspNetUsers_CreatedBy",
                         column: x => x.CreatedBy,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Documents_AspNetUsers_LastModifiedBy",
                         column: x => x.LastModifiedBy,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Documents_Tenants_TenantId",
                         column: x => x.TenantId,
@@ -436,6 +462,9 @@ namespace CleanArchitecture.Blazor.Migrators.SqLite.Migrations
 
             migrationBuilder.DropTable(
                 name: "Products");
+
+            migrationBuilder.DropTable(
+                name: "Visitors");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

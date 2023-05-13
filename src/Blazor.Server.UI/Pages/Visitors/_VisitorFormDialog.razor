@@ -1,0 +1,212 @@
+﻿@using CleanArchitecture.Blazor.Application.Features.Visitors.Commands.AddEdit
+@using SixLabors.ImageSharp.Formats.Png;
+@using ResizeMode = SixLabors.ImageSharp.Processing.ResizeMode
+@using Severity = MudBlazor.Severity
+@using Size = SixLabors.ImageSharp.Size
+@using SixLabors.ImageSharp.Formats.Png
+@inherits MudComponentBase
+@inject IStringLocalizer<Visitors> L
+@inject IJSRuntime JS
+<MudDialog>
+    <DialogContent>
+        <MudForm Model="@model" @ref="@_form" Validation="@(_modelValidator.ValidateValue)">
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="@L[model.GetMemberDescription(x=>x.Name)]" @bind-Value="model.Name" For="@(() => model.Name)" Required="true" RequiredError="@L["name is required!"]"></MudTextField>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="@L[model.GetMemberDescription(x=>x.Documentation)]" @bind-Value="model.Documentation" For="@(() => model.Documentation)" Required="false" RequiredError="@L["documentation is required!"]"></MudTextField>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="@L[model.GetMemberDescription(x=>x.Interviewee)]" @bind-Value="model.Interviewee" For="@(() => model.Interviewee)" Required="false" RequiredError="@L["interviewee is required!"]"></MudTextField>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudDatePicker Label="@L[model.GetMemberDescription(x=>x.DateOfVisit)]" @bind-Date="model.DateOfVisit" For="@(() => model.DateOfVisit)" Required="false" RequiredError="@L["date of visit is required!"]"></MudDatePicker>
+                </MudItem>
+                <MudItem xs="12" md="12">
+                    <MudTextField Label="@L[model.GetMemberDescription(x=>x.PurposeOfVisit)]" @bind-Value="model.PurposeOfVisit" For="@(() => model.PurposeOfVisit)" Required="false" RequiredError="@L["purpose of visit is required!"]"></MudTextField>
+                </MudItem>
+                <MudItem>
+                    <div class="d-flex flex-row gap-4 mb-2">
+                        <MudFileUpload T="IReadOnlyList<IBrowserFile>" Multiple
+                                       SuppressOnChangeWhenInvalid="true"
+                                       @bind-Files="model.UploadPhotos" OnFilesChanged="UploadFiles" For="@(() => model.UploadPhotos)">
+                            <ButtonTemplate>
+                                <MudLoadingButton Loading="@_uploading" HtmlTag="label" Disabled="_uploading"
+                                                  Variant="Variant.Filled"
+                                                  Color="Color.Primary"
+                                                  for="@context">
+                                    @(L["Upload picture"])
+                                </MudLoadingButton>
+                            </ButtonTemplate>
+                        </MudFileUpload>
+                    </div>
+                    <MudText Typo="Typo.body2" Color="Color.Error">@L["Warning: Please do not upload your personal photos. This is a demonstration website, Protect your privacy."]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Error">@L["警告: 请不要上传你的个人照片，这只是一个演示程序. 请保护好你的隐私."]</MudText>
+                    <div class="d-fex">
+                        @if (model.Photos is not null)
+                        {
+                            foreach (var img in model.Photos)
+                            {
+                                <div style="float:left; position: relative; width: 80px; height: 80px; margin: 10px;">
+                                    <MudTooltip Delay="500" Text="@img.Name">
+                                        <MudImage ObjectFit="ObjectFit.Cover" Height="80" Width="80" Src="@img.Url" Alt="@img.Name" Elevation="25" Class="mr-2 rounded-lg" />
+                                    </MudTooltip>
+                                    <div style="position: absolute;top: 0px;left: 0px; z-index: 2990;">
+                                        <MudIconButton OnClick="@(() => PreviewImage(img.Url, model.Photos))" Icon="@Icons.Material.Filled.Image" aria-label="preview" Color="Color.Info" Size="MudBlazor.Size.Small"></MudIconButton>
+                                    </div>
+                                    <div style="position: absolute;top: 0px;right: 0px; z-index: 2990;">
+                                        <MudIconButton OnClick="@(() => DeleteImage(img))" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error" Size="MudBlazor.Size.Small"></MudIconButton>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </MudItem>
+
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@ConstantString.Cancel</MudButton>
+        <MudLoadingButton Loading="@_saving" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
+        <MudButton Loading="@_saving" Color="MudBlazor.Color.Primary" OnClick="Submit">@ConstantString.Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    MudForm? _form;
+    private bool _saving = false;
+    [CascadingParameter]
+    MudDialogInstance MudDialog { get; set; } = default!;
+    AddEditVisitorCommandValidator _modelValidator = new();
+    [EditorRequired][Parameter] public AddEditVisitorCommand model { get; set; } = null!;
+    [Inject] private IMediator _mediator { get; set; } = default!;
+    [Inject]
+    private IUploadService UploadService { get; set; } = default!;
+
+    const long MaxAllowedSize = 3145728;
+    bool _uploading;
+
+    private async Task DeleteImage(Photo photo)
+    {
+        if (model.Photos != null)
+        {
+            var parameters = new DialogParameters
+            {
+                { nameof(ConfirmationDialog.ContentText), $"{L["Are you sure you want to erase this image?"]}" }
+            };
+            var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, DisableBackdropClick = true };
+            var dialog = DialogService.Show<ConfirmationDialog>($"{L["Erase imatge"]}", parameters, options);
+            var state = await dialog.Result;
+
+            if (!state.Canceled)
+            {
+                model.Photos.Remove(photo);
+            }
+        }
+    }
+
+    private async Task PreviewImage(string url, IEnumerable<Photo> images)
+    {
+        await JS.InvokeVoidAsync("previewImage", url, images.Select(x => x.Url).ToArray());
+    }
+
+    private async Task UploadFiles(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            _uploading = true;
+            var list = new List<Photo>();
+            foreach (var file in e.GetMultipleFiles())
+            {
+                try
+                {
+                    var filestream = file.OpenReadStream(GlobalVariable.MaxAllowedSize);
+                    var imgStream = new MemoryStream();
+                    await filestream.CopyToAsync(imgStream);
+                    imgStream.Position = 0;
+                    using (var outStream = new MemoryStream())
+                    {
+                        using (var image = Image.Load(imgStream))
+                        {
+                            image.Mutate(
+                                i => i.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(720, 720) }));
+                            image.Save(outStream, PngFormat.Instance);
+                            var filename = file.Name;
+                            var fi = new FileInfo(filename);
+                            var ext = fi.Extension;
+                            var result = await UploadService.UploadAsync(new UploadRequest(Guid.NewGuid() + ext, UploadType.Photos, outStream.ToArray()));
+                            list.Add(new Photo { Name = filename, Size = outStream.Length, Url = result });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"{ex.Message}", Severity.Error);
+                }
+            }
+            Snackbar.Add(L["Upload pictures successfully"], Severity.Info);
+
+            if (model.Photos is null)
+                model.Photos = list;
+            else
+                model.Photos.AddRange(list);
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    async Task Submit()
+    {
+        try
+        {
+            _saving = true;
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid)
+                return;
+            var result = await _mediator.Send(model);
+            if (result.Succeeded)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+                Snackbar.Add(ConstantString.SaveSuccess, MudBlazor.Severity.Info);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage, MudBlazor.Severity.Error);
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+    async Task SaveAndNew()
+    {
+        try
+        {
+            _saving = true;
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid)
+                return;
+            var result = await _mediator.Send(model);
+            if (result.Succeeded)
+            {
+                Snackbar.Add(ConstantString.SaveSuccess, MudBlazor.Severity.Info);
+                await Task.Delay(300);
+                model = new AddEditVisitorCommand() { };
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage, MudBlazor.Severity.Error);
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+    void Cancel() => MudDialog.Cancel();
+}

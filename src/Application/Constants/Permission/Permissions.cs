@@ -22,7 +22,18 @@ public static class Permissions
         public const string Export = "Permissions.Logs.Export";
         public const string Purge = "Permissions.Logs.Purge";
     }
-    
+    [DisplayName("Visitors")]
+    [Description("Visitors Permissions")]
+    public static class Visitors
+    {
+        public const string View = "Permissions.Visitors.View";
+        public const string Create = "Permissions.Visitors.Create";
+        public const string Edit = "Permissions.Visitors.Edit";
+        public const string Delete = "Permissions.Visitors.Delete";
+        public const string Search = "Permissions.Visitors.Search";
+        public const string Export = "Permissions.Visitors.Export";
+        public const string Import = "Permissions.Visitors.Import";
+    }
 
     [DisplayName("Products")]
     [Description("Products Permissions")]
