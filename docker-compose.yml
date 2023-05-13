@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  dashboard:
+    image: ${DOCKER_REGISTRY-}blazorserver
+    build:
+      context: .
+      dockerfile: src/Blazor.Server.UI/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - UseInMemoryDatabase=false
+      - DatabaseSettings__DBProvider=sqlite
+      - DatabaseSettings__DefaultConnection=Data Source=FacialRecognition.db
+      - ASPNETCORE_URLS=https://+:443;http://+:80
+      #- ASPNETCORE_Kestrel__Certificates__Default__Password=Password@123
+      #- ASPNETCORE_Kestrel__Certificates__Default__Path=/root/.aspnet/https/Blazor.Server.UI.pfx
+    volumes:
+     - ${APPDATA}\microsoft\UserSecrets\:/root/.microsoft/usersecrets:ro
+     - ~/.aspnet/https:/root/.aspnet/https:ro
+    ports:
+      - "5000:80"
+      - "5001:443"
+    restart: on-failure
+
