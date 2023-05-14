@@ -14,10 +14,8 @@ A web application built with Blazor Server that uses Insightface API to recogniz
 
 ## Demo
 Watch this [video](doc/demo.mp4) to see a demonstration of the application in action.
-<video width="1280" height="720" controls>
-    <source src="./doc/demo.mp4" type="video/mp4">
-</video>
 
+<video src="./doc/demo.mp4" controls="controls" wwidth="1280" height="720"></video>
 ## Installation and Usage
 
 1. Clone the repository to your local machine.
