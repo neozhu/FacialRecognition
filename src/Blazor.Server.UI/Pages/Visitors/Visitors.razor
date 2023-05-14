@@ -204,28 +204,52 @@
                             </CardHeaderContent>
                         </MudCardHeader>
                         <MudCardContent>
+                            <MudSimpleTable Style="overflow-x: auto;">
+                                <thead>
+                                    <tr>
+                                        <th>@L["Checked Date"]</th>
+                                        <th>@L["Signature"]</th>
+                                        <th>@L["Tracking"]</th>
+                                        <th>@L["Take Photo"]</th>
+                                    </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in context.Item.VisitHistories)
+                                { 
+                                    <tr>
+                                       <td>@row.CheckDateTime</td>
+                                       <td>@row.Signature</td>
+                                        <td>@row.Tracking</td>
+                                        <td>
+                                            <MudAvatar>
+                                                <MudImage Src="@row.TakePhoto"></MudImage>
+                                            </MudAvatar>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudCardContent>
+                </MudCard>
+            </ChildRowContent>
+            <NoRecordsContent>
+                <MudText>@ConstantString.NoRecords</MudText>
+            </NoRecordsContent>
+            <LoadingContent>
+                <MudText>@ConstantString.Loading</MudText>
+            </LoadingContent>
+            <PagerContent>
+                <MudDataGridPager PageSizeOptions="@(new int[]{10,15,30,50,100,500,1000})" />
+            </PagerContent>
+        </MudDataGrid>
+    </ChildContent>
+    <ErrorContent>
+        <CustomError Exception="context"></CustomError>
+    </ErrorContent>
+</ErrorBoundary>
 
-                        </MudCardContent>
-                    </MudCard>
-                </ChildRowContent>
-                <NoRecordsContent>
-                    <MudText>@ConstantString.NoRecords</MudText>
-                </NoRecordsContent>
-                <LoadingContent>
-                    <MudText>@ConstantString.Loading</MudText>
-                </LoadingContent>
-                <PagerContent>
-                    <MudDataGridPager PageSizeOptions="@(new int[]{10,15,30,50,100,500,1000})" />
-                </PagerContent>
-            </MudDataGrid>
-        </ChildContent>
-        <ErrorContent>
-            <CustomError Exception="context"></CustomError>
-        </ErrorContent>
-    </ErrorBoundary>
 
-
-    @code {
+@code {
     public string? Title { get; private set; }
     private int _defaultPageSize = 15;
     private HashSet<VisitorDto> _selectedItems = new HashSet<VisitorDto>();
@@ -342,7 +366,7 @@
         if (!state.Canceled)
         {
             await _table.ReloadServerData();
-            _selectedItems = new();
+            _selectedItems.Remove(copyitem);
         }
     }
     private async Task OnEdit(VisitorDto dto)
@@ -376,6 +400,7 @@
         if (!state.Canceled)
         {
             await _table.ReloadServerData();
+            _selectedItems.Remove(dto);
         }
     }
 
@@ -420,5 +445,8 @@
         _exporting = false;
     }
 
-
+    private async Task PreviewImage(string url)
+    {
+        await JS.InvokeVoidAsync("previewImage", url, new string[] { url });
+    }
 }

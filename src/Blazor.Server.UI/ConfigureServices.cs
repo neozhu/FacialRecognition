@@ -31,7 +31,7 @@ public static class ConfigureServices
                 options.HandshakeTimeout = TimeSpan.FromSeconds(15);
                 options.KeepAliveInterval = TimeSpan.FromSeconds(15);
                 options.MaximumParallelInvocationsPerClient = 100;
-                options.MaximumReceiveMessageSize = 64 * 1024;
+                options.MaximumReceiveMessageSize = 100_000_000;
                 options.StreamBufferCapacity = 10;
             })
             .AddCircuitOptions(option => { option.DetailedErrors = true; });

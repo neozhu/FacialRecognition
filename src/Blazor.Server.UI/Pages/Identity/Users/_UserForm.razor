@@ -2,6 +2,10 @@
 @using CleanArchitecture.Blazor.Application.Features.Identity.Dto
 @using ResizeMode = SixLabors.ImageSharp.Processing.ResizeMode
 @using Severity = MudBlazor.Severity
+@using Color = MudBlazor.Color;
+@using SixLabors.ImageSharp;
+@using Image= SixLabors.ImageSharp.Image;
+@using SixLabors.ImageSharp.Processing;
 @using Size = SixLabors.ImageSharp.Size
 @using SixLabors.ImageSharp.Formats.Png
 @inherits MudComponentBase
@@ -188,8 +192,7 @@
         {
             using (var image = Image.Load(imgStream))
             {
-                image.Mutate(
-                    i => i.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(128, 128) }));
+                image.Mutate(i => i.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(128, 128) }));
                 image.Save(outStream, PngFormat.Instance);
                 var filename = e.File.Name;
                 var fi = new FileInfo(filename);

@@ -3,62 +3,73 @@
 using System.ComponentModel;
 using CleanArchitecture.Blazor.Application.Features.Visitors.DTOs;
 using CleanArchitecture.Blazor.Application.Features.Visitors.Caching;
+using SixLabors.ImageSharp.Formats.Png;
+using static CleanArchitecture.Blazor.Application.Features.Visitors.Queries.GetById.SearchVisitorByImageHandler;
+using System.Net.Http;
 
 namespace CleanArchitecture.Blazor.Application.Features.Visitors.Commands.Update;
 
-    public class UpdateVisitorCommand: IMapFrom<VisitorDto>,ICacheInvalidatorRequest<Result<int>>
-    {
-    [Description("Id")]
-    public int Id { get; set; }
-    [Description("Name")]
-    public string Name { get; set; } = String.Empty;
-    [Description("Interviewee")]
-    public string? Interviewee { get; set; }
-    [Description("Description")]
-    public string? Description { get; set; }
-    [Description("Purpose Of Visit")]
-    public string? PurposeOfVisit { get; set; }
-    [Description("Documentation")]
-    public string? Documentation { get; set; }
-    [Description("Date Of Visit")]
-    public DateTime? DateOfVisit { get; set; }
+public class UpdateVisitorCommand : IMapFrom<VisitorDto>, ICacheInvalidatorRequest<Result<int>>
+{
 
-    [Description("Status")]
-    public VisitStatus Status { get; set; } = VisitStatus.New;
-    [Description("Photo")]
-    public List<Photo>? Photos { get; set; }
-    [Description("VisitHistories")]
-    public List<VisitHistory>? VisitHistories { get; set; }
+    public int Id { get; set; }
+    public string ImageDataString { get; set; }
 
     public string CacheKey => VisitorCacheKey.GetAllCacheKey;
-        public CancellationTokenSource? SharedExpiryTokenSource => VisitorCacheKey.SharedExpiryTokenSource();
+    public CancellationTokenSource? SharedExpiryTokenSource => VisitorCacheKey.SharedExpiryTokenSource();
+}
+
+public class UpdateVisitorCommandHandler : IRequestHandler<UpdateVisitorCommand, Result<int>>
+{
+    private readonly IUploadService _uploadService;
+    private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
+    private readonly IStringLocalizer<UpdateVisitorCommandHandler> _localizer;
+    public UpdateVisitorCommandHandler(
+        IUploadService uploadService,
+        IApplicationDbContext context,
+        IStringLocalizer<UpdateVisitorCommandHandler> localizer,
+         IMapper mapper
+        )
+    {
+        _uploadService = uploadService;
+        _context = context;
+        _localizer = localizer;
+        _mapper = mapper;
+    }
+    public async Task<Result<int>> Handle(UpdateVisitorCommand request, CancellationToken cancellationToken)
+    {
+        var item = await _context.Visitors.FindAsync(new object[] { request.Id }, cancellationToken) ?? throw new NotFoundException($"Visitor with id: [{request.Id}] not found."); ;
+        var saved =await saveImage(request.ImageDataString);
+        if(item.VisitHistories is null)
+        {
+            item.VisitHistories = new List<VisitHistory>();
+        }
+        item.VisitHistories.Add(new VisitHistory() { CheckDateTime = DateTime.Now, Signature = item.Name, TakePhoto = saved, Tracking = "Checked" });
+        // raise a update domain event
+        item.AddDomainEvent(new VisitorUpdatedEvent(item));
+        await _context.SaveChangesAsync(cancellationToken);
+        return await Result<int>.SuccessAsync(item.Id);
     }
 
-    public class UpdateVisitorCommandHandler : IRequestHandler<UpdateVisitorCommand, Result<int>>
+    private async Task<string> saveImage(string imagedatastr)
     {
-        private readonly IApplicationDbContext _context;
-        private readonly IMapper _mapper;
-        private readonly IStringLocalizer<UpdateVisitorCommandHandler> _localizer;
-        public UpdateVisitorCommandHandler(
-            IApplicationDbContext context,
-            IStringLocalizer<UpdateVisitorCommandHandler> localizer,
-             IMapper mapper
-            )
+        byte[] imageData = Convert.FromBase64String(imagedatastr.Split(',')[1]);
+        using (var outstream = new MemoryStream())
         {
-            _context = context;
-            _localizer = localizer;
-            _mapper = mapper;
+            using (var image = Image.Load(imageData))
+            {
+                image.Mutate(x => x
+                    .Flip(FlipMode.Horizontal) //To match mirrored webcam image
+                );
+                image.Save(outstream, PngFormat.Instance);
+            }
+            var filename = $"{Guid.NewGuid()}.jpg";
+            var result = await _uploadService.UploadAsync(new UploadRequest(filename, UploadType.Photos,outstream.ToArray()));
+            return result;
+
         }
-        public async Task<Result<int>> Handle(UpdateVisitorCommand request, CancellationToken cancellationToken)
-        {
-           // TODO: Implement UpdateVisitorCommandHandler method 
-           var item =await _context.Visitors.FindAsync( new object[] { request.Id }, cancellationToken)?? throw new NotFoundException($"Visitor with id: [{request.Id}] not found.");;
-           var dto = _mapper.Map<VisitorDto>(request);
-           item = _mapper.Map(dto, item);
-		    // raise a update domain event
-		   item.AddDomainEvent(new VisitorUpdatedEvent(item));
-           await _context.SaveChangesAsync(cancellationToken);
-           return await Result<int>.SuccessAsync(item.Id);
-        }
+   
     }
+}
 

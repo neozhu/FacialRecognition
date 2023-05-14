@@ -2,6 +2,10 @@
 @using CleanArchitecture.Blazor.Application.Features.Documents.Commands.Upload
 @using Blazor.Server.UI.Services.JsInterop
 @using CleanArchitecture.Blazor.Domain.Enums
+@using Image= SixLabors.ImageSharp.Image;
+@using SixLabors.ImageSharp.Formats.Png;
+@using SixLabors.ImageSharp.Processing;
+@using SixLabors.ImageSharp;
 @inherits MudComponentBase
 @inject IStringLocalizer<Documents> L
 <MudDialog>
@@ -158,9 +162,8 @@
                                 {
                                     scale = 0.9m;
                                 }
-                                image.Mutate(
-                                   i => i.AutoOrient().Resize(Convert.ToInt32((image.Width * scale)), 0));
-                                image.Save(outStream, SixLabors.ImageSharp.Formats.Png.PngFormat.Instance);
+                                image.Mutate(i => i.AutoOrient().Resize(Convert.ToInt32((image.Width * scale)), 0));
+                                image.Save(outStream, PngFormat.Instance);
                             }
                             var request = new UploadRequest(uploaded.FileName, UploadType.Document, outStream.ToArray());
                             list.Add(request);

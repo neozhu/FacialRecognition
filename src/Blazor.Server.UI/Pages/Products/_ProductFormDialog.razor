@@ -1,8 +1,12 @@
 @using CleanArchitecture.Blazor.Application.Features.Products.Commands.AddEdit
 @using ResizeMode = SixLabors.ImageSharp.Processing.ResizeMode
 @using Severity = MudBlazor.Severity
+@using SixLabors.ImageSharp;
 @using Size = SixLabors.ImageSharp.Size
 @using SixLabors.ImageSharp.Formats.Png
+@using Image = SixLabors.ImageSharp.Image;
+@using SixLabors.ImageSharp.Processing;
+@using Color= MudBlazor.Color;
 @inherits MudComponentBase
 @inject IJSRuntime JS
 @inject IStringLocalizer<Products> L

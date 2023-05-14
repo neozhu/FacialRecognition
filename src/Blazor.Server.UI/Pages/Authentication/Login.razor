@@ -62,16 +62,7 @@
                 }
 
             </MudButton>
-            <div class="d-flex justify-space-around flex-grow-1 my-4 gap-4">
-                <MudButton Class="flex-grow-1" OnClick="@(() => SignInExternal("Microsoft"))" Variant="Variant.Filled" StartIcon="@Icons.Custom.Brands.Microsoft" ButtonType="ButtonType.Button"
-                           title="Sign in with Microsoft">
-                    @ConstantString.Microsoft
-                </MudButton>
-                <MudButton Class="flex-grow-1" OnClick="@(() => SignInExternal("Google"))" Variant="Variant.Filled" StartIcon="@Icons.Custom.Brands.Google" ButtonType="ButtonType.Button"
-                           title="Sign in with Google">
-                    @ConstantString.Google
-                </MudButton>
-            </div>
+           
         </MudForm>
     </NotAuthorized>
     <Authorized>
