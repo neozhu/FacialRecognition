@@ -1,6 +1,6 @@
 
 
-# Face Recognition Web Application
+# Face Recognition With  Application
 
 A web application built with Blazor Server that uses Insightface API to recognize faces. This application is designed to simulate a visitor registration system, where visitors can fill out an application form and upload their photos. After the application is approved, their faces are captured by a camera and analyzed by the Insightface API to find the visitor's application and update their visitation record.
 
