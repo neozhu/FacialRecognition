@@ -1,0 +1,202 @@
+﻿@using BlazorCameraStreamer;
+@using CleanArchitecture.Blazor.Application.Features.Visitors.Commands.Update;
+@using CleanArchitecture.Blazor.Application.Features.Visitors.DTOs;
+@using CleanArchitecture.Blazor.Application.Features.Visitors.Queries.GetById;
+@using System.Collections.Concurrent;
+<MudCard>
+    <div class="@className">
+        <CameraStreamer @ref="CameraStreamerReference"
+                        Width="370"
+                        Height="280"
+                        OnRendered="OnRenderedHandler"
+                        OnFrame="OnFrameHandler"
+                        Style="width: 370px; height: 280px;"
+                        CameraID=@cameraId
+                        Autostart="true" />
+    </div>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Facial Recognition</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudTooltip Text="Enable Automatic recognition"><MudSwitch @bind-Checked="@autoEnable" Color="Color.Success" /></MudTooltip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if(visitor is null)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" Animation="Animation.False" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="110px" Animation="Animation.False" />
+        }
+        else if (searching && visitor==null)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" Animation="Animation.Wave" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="110px" Animation="Animation.Wave" />
+        }
+        else if (visitor!=null)
+        {
+          <MudAvatar>
+                <MudImage Src="@visitor.Photos.First().Url"></MudImage>
+          </MudAvatar>
+          <MudGrid>
+              <MudItem sm="12">
+                    <MudTextField Label="@visitor.GetMemberDescription(x=>x.Name)" Value="@visitor.Name"></MudTextField>
+                    <MudTextField Label="@visitor.GetMemberDescription(x=>x.Documentation)" Value="@visitor.Documentation"></MudTextField>
+                    <MudTextField Label="@visitor.GetMemberDescription(x=>x.PurposeOfVisit)" Value="@visitor.PurposeOfVisit"></MudTextField>
+                    <MudTextField Label="@visitor.GetMemberDescription(x=>x.DateOfVisit)" Value="@visitor.DateOfVisit"></MudTextField>
+              </MudItem>
+          </MudGrid>
+        }
+    </MudCardContent>
+    <MudCardActions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CameraAlt" OnClick="@(()=>GetCurrentFrame())">Take a picture</MudButton>
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.CheckBox" Color="Color.Primary" OnClick="@(()=>OnConfirm())" Disabled="@(visitor==null)">Confirm</MudButton>
+    </MudCardActions>
+
+</MudCard>
+
+<MudPaper Class="d-flex align-center flex-wrap">
+        <MudGrid>
+    <MudItem xs="12" Class="d-flex align-center flex-wrap">
+        <MudGallery @ref="_gallery" ImageSource="_source" ItemPerLine="6" 
+                    ShowToolboxCloseButton="true" 
+                     EnableAnimation="true">
+            <ToolboxTopContent>
+                <MudText Class="white-text pa-4">Image @(_gallery.GetSelectedImageIndex() + 1) - Description</MudText>
+            </ToolboxTopContent>
+            <ToolboxBottomContent>
+                <MudIconButton Class="white-text" Icon="@Icons.Material.Outlined.Edit" />
+               <MudIconButton Class="white-text" Icon="@Icons.Material.Outlined.Close" OnClick="@(() => _gallery.ChangeMenu(false))" />
+             
+            </ToolboxBottomContent>
+        </MudGallery>
+    </MudItem>
+    </MudGrid>
+    </MudPaper>
+
+@code {
+    [Inject]
+    private IMediator _mediator { get; set; } = default!;
+    private bool searching=false;
+    private string cameraId = null;
+    private bool autoEnable = false;
+    private int frameCount;
+    private string className = "border-4 border-solid mud-border-error";
+    private string imageData;
+    private CameraStreamer CameraStreamerReference;
+    MudGallery _gallery;
+    List<string> _source = new();
+    private VisitorDto? visitor = null;
+    private ConcurrentQueue<string> queue = new ConcurrentQueue<string>();
+    //protected override async Task OnAfterRenderAsync(bool firstRender)
+    //{
+    //    await base.OnAfterRenderAsync(firstRender);
+    //    if (firstRender)
+    //    {
+    //        await CameraStreamerReference.StartAsync();
+    //    }
+    //}
+    private async void OnRenderedHandler()
+    {
+        frameCount = 0;
+
+        // Check camera-access or ask user, if it's not allowed currently
+        if (await CameraStreamerReference.GetCameraAccessAsync())
+        {
+            // Reloading re-initializes the stream and starts the
+            // stream automatically if the Autostart parameter is set
+            await CameraStreamerReference.ReloadAsync();
+
+            // If Autostart is not set, you have to manually start the stream again
+            /* await CameraStreamerReference.StartAsync(); */
+        }
+    }
+    private async void Start()
+    {
+        await CameraStreamerReference.StartAsync();
+    }
+
+    private async void Stop()
+    {
+        await CameraStreamerReference.StopAsync();
+    }
+
+    private async Task OnFrameHandler(string imageData)
+    {
+
+
+        ++frameCount;
+        if (autoEnable)
+        {
+            if (frameCount % 5 == 0 || frameCount % 7 == 0 || frameCount % 3 == 0)
+            {
+                className = "border-4 border-solid mud-border-success";
+            }
+            else
+            {
+                className = "border-4 border-solid mud-border-warning";
+            }
+            if (!queue.Any())
+            {
+                queue.Enqueue("item");
+                InvokeAsync(() =>
+                 {
+                     search(imageData);
+                 });
+            }
+        }
+        else
+        {
+            className = "border-4 border-solid mud-border-error";
+        }
+    }
+    private async Task search(string imagedataString)
+    {
+        try
+        {
+            if (searching) return;
+            searching = true;
+            var result = await _mediator.Send(new SearchVisitorByImage() { ImageDataString = imagedataString });
+            if (!result.Succeeded)
+            {
+                Snackbar.Add(result.ErrorMessage, MudBlazor.Severity.Error);
+                visitor = null;
+            }
+            else
+            {
+                visitor = result.Data;
+                Snackbar.Add($"{visitor.Name} checked", MudBlazor.Severity.Info);
+            }
+            await InvokeAsync(() => StateHasChanged());
+        }
+        finally
+        {
+            searching = false;
+            queue.Clear();
+        }
+    }
+
+    private async void GetCurrentFrame()
+    {
+        imageData = await CameraStreamerReference.GetCurrentFrameAsync();
+        await search(imageData);
+        _source.Add(imageData);
+
+    }
+
+    private async Task OnConfirm()
+    {
+        imageData = await CameraStreamerReference.GetCurrentFrameAsync();
+        var result = await _mediator.Send(new UpdateVisitorCommand() { Id = visitor.Id, ImageDataString = imageData });
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.ErrorMessage, MudBlazor.Severity.Error);
+    
+        }
+        else
+        {
+            Snackbar.Add($"{visitor.Name} confirmed", MudBlazor.Severity.Success);
+            visitor = null;
+        }
+    }
+}
