@@ -3,23 +3,28 @@
 @using CleanArchitecture.Blazor.Application.Features.Visitors.DTOs;
 @using CleanArchitecture.Blazor.Application.Features.Visitors.Queries.GetById;
 @using System.Collections.Concurrent;
+@using System.Timers
+@using System.Threading.Tasks
 <MudCard>
-    <div class="@className">
+    <div class="Camera">
         <CameraStreamer @ref="CameraStreamerReference"
                         Width="370"
                         Height="280"
                         OnRendered="OnRenderedHandler"
-                        OnFrame="OnFrameHandler"
                         Style="width: 370px; height: 280px;"
                         CameraID=@cameraId
                         Autostart="true" />
+        @if (isRunning)
+        {
+            <MudProgressLinear Color="Color.Secondary" Indeterminate="true" Class="pa-0 ma-0" />
+        }
     </div>
     <MudCardHeader>
         <CardHeaderContent>
             <MudText Typo="Typo.h6">Facial Recognition</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudTooltip Text="Enable Automatic recognition"><MudSwitch @bind-Checked="@autoEnable" Color="Color.Success" /></MudTooltip>
+            <MudTooltip Text="Enable Automatic recognition"><MudSwitch Checked="@autoEnable" T="bool" CheckedChanged="@((s)=>OnStart(s))" Color="Color.Success" /></MudTooltip>
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
@@ -81,21 +86,15 @@
     private string cameraId = null;
     private bool autoEnable = false;
     private int frameCount;
-    private string className = "border-4 border-solid mud-border-error";
     private string imageData;
     private CameraStreamer CameraStreamerReference;
     MudGallery _gallery;
     List<string> _source = new();
     private VisitorDto? visitor = null;
-    private ConcurrentQueue<string> queue = new ConcurrentQueue<string>();
-    //protected override async Task OnAfterRenderAsync(bool firstRender)
-    //{
-    //    await base.OnAfterRenderAsync(firstRender);
-    //    if (firstRender)
-    //    {
-    //        await CameraStreamerReference.StartAsync();
-    //    }
-    //}
+    private Timer timer;
+    private bool isRunning;
+    private bool isTaskRunning;
+
     private async void OnRenderedHandler()
     {
         frameCount = 0;
@@ -120,34 +119,64 @@
     {
         await CameraStreamerReference.StopAsync();
     }
-
-    private async Task OnFrameHandler(string imageData)
+    private async void OnStart(bool val)
     {
-
-
-        ++frameCount;
+        autoEnable = val;
         if (autoEnable)
         {
-            if (frameCount % 5 == 0 || frameCount % 7 == 0 || frameCount % 3 == 0)
-            {
-                className = "border-4 border-solid mud-border-success";
-            }
-            else
-            {
-                className = "border-4 border-solid mud-border-warning";
-            }
-            if (!queue.Any())
-            {
-                queue.Enqueue("item");
-                InvokeAsync(() =>
-                 {
-                     search(imageData);
-                 });
-            }
+            await StartTask();
         }
         else
         {
-            className = "border-4 border-solid mud-border-error";
+            await StopTask();
+        }
+    }
+    private Task StartTask()
+    {
+        isRunning = true;
+        timer = new Timer();
+        timer.Interval = 1500;
+        timer.Elapsed += async (sender, e) => await TimerElapsedAsync();
+        timer.Start();
+        return Task.CompletedTask;
+    }
+    private async Task StopTask()
+    {
+        isRunning = false;
+        timer.Stop();
+        timer.Dispose();
+
+        while (isTaskRunning)
+        {
+            await Task.Delay(100); 
+        }
+    }
+    private async Task TimerElapsedAsync()
+    {
+        if (!isTaskRunning)
+        {
+            isTaskRunning = true;
+            try
+            {
+                var imagedataString = await CameraStreamerReference.GetCurrentFrameAsync();
+                var result = await _mediator.Send(new SearchVisitorByImage() { ImageDataString = imagedataString });
+                if (!result.Succeeded)
+                {
+                    Snackbar.Add(result.ErrorMessage, MudBlazor.Severity.Error);
+                    visitor = null;
+                }
+                else
+                {
+                    visitor = result.Data;
+                    Snackbar.Add($"{visitor.Name} checked", MudBlazor.Severity.Info);
+                }
+                await InvokeAsync(() => StateHasChanged());
+            }
+            finally
+            {
+                isTaskRunning = false;
+            }
+
         }
     }
     private async Task search(string imagedataString)
@@ -172,7 +201,7 @@
         finally
         {
             searching = false;
-            queue.Clear();
+       
         }
     }
 
