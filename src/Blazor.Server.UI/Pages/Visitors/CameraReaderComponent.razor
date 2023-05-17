@@ -24,7 +24,7 @@
             <MudText Typo="Typo.h6">Facial Recognition</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudTooltip Text="Enable Automatic recognition"><MudSwitch Checked="@autoEnable" T="bool" CheckedChanged="@((s)=>OnStart(s))" Color="Color.Success" /></MudTooltip>
+            <MudTooltip Text="Enable Automatic recognition"><MudSwitch Checked="@autoEnable" T="bool" Disabled="@pending" CheckedChanged="@((s)=>OnStart(s))" Color="Color.Success" /></MudTooltip>
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
@@ -91,10 +91,11 @@
     MudGallery _gallery;
     List<string> _source = new();
     private VisitorDto? visitor = null;
-    private Timer timer;
     private bool isRunning;
-    private bool isTaskRunning;
-
+    private PeriodicTimer timer=new PeriodicTimer(new TimeSpan(0,0,1));
+    private CancellationTokenSource cts;
+    private Task? timerTask;
+    private bool pending = false;
     private async void OnRenderedHandler()
     {
         frameCount = 0;
@@ -124,39 +125,37 @@
         autoEnable = val;
         if (autoEnable)
         {
-            await StartTask();
+            isRunning = true;
+            cts = new();
+            StartTask();
+            
         }
         else
         {
             await StopTask();
         }
     }
-    private Task StartTask()
+    private void StartTask()
     {
-        isRunning = true;
-        timer = new Timer();
-        timer.Interval = 1500;
-        timer.Elapsed += async (sender, e) => await TimerElapsedAsync();
-        timer.Start();
-        return Task.CompletedTask;
+        timerTask = TimerElapsedAsync();
     }
     private async Task StopTask()
     {
+        if (timerTask is null) return;
+        pending = true;
+        cts.Cancel();
+        await timerTask;
+        cts.Dispose();
         isRunning = false;
-        timer.Stop();
-        timer.Dispose();
-
-        while (isTaskRunning)
-        {
-            await Task.Delay(100); 
-        }
+        pending = false;
+        await InvokeAsync(() => StateHasChanged());
     }
     private async Task TimerElapsedAsync()
     {
-        if (!isTaskRunning)
+
+        try
         {
-            isTaskRunning = true;
-            try
+            while (await timer.WaitForNextTickAsync(cts.Token))
             {
                 var imagedataString = await CameraStreamerReference.GetCurrentFrameAsync();
                 var result = await _mediator.Send(new SearchVisitorByImage() { ImageDataString = imagedataString });
@@ -172,12 +171,12 @@
                 }
                 await InvokeAsync(() => StateHasChanged());
             }
-            finally
-            {
-                isTaskRunning = false;
-            }
-
+        }catch(OperationCanceledException)
+        {
+            
         }
+
+      
     }
     private async Task search(string imagedataString)
     {
