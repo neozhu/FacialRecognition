@@ -142,7 +142,7 @@
                             var filename = file.Name;
                             var fi = new FileInfo(filename);
                             var ext = fi.Extension;
-                            var result = await UploadService.UploadAsync(new UploadRequest(Guid.NewGuid() + ext, UploadType.Photos, outStream.ToArray()));
+                            var result = await UploadService.UploadAsync(new UploadRequest(Guid.NewGuid() + ".png", UploadType.Photos, outStream.ToArray()));
                             list.Add(new Photo { Name = filename, Size = outStream.Length, Url = result });
                         }
                     }
