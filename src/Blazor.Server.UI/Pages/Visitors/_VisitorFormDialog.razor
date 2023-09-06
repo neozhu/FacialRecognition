@@ -33,7 +33,7 @@
                     <div class="d-flex flex-row gap-4 mb-2">
                         <MudFileUpload T="IReadOnlyList<IBrowserFile>" Multiple
                                        SuppressOnChangeWhenInvalid="true"
-                                       @bind-Files="model.UploadPhotos" OnFilesChanged="UploadFiles" For="@(() => model.UploadPhotos)">
+                        @bind-Files="model.UploadPhotos" OnFilesChanged="UploadFiles" For="@(() => model.UploadPhotos)">
                             <ButtonTemplate>
                                 <MudLoadingButton Loading="@_uploading" HtmlTag="label" Disabled="_uploading"
                                                   Variant="Variant.Filled"
@@ -133,8 +133,11 @@
                     {
                         using (var image = Image.Load(imgStream))
                         {
-                            image.Mutate(
-                                i => i.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(720, 720) }));
+                            if (image.Width > 720 || image.Height > 720)
+                            {
+                                image.Mutate(
+                                    i => i.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(720, 720) }));
+                            }
                             image.Save(outStream, PngFormat.Instance);
                             var filename = file.Name;
                             var fi = new FileInfo(filename);
