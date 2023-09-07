@@ -92,7 +92,7 @@
     List<string> _source = new();
     private VisitorDto? visitor = null;
     private bool isRunning;
-    private PeriodicTimer timer=new PeriodicTimer(new TimeSpan(0,0,1));
+    private PeriodicTimer timer=new PeriodicTimer(new TimeSpan(0,0,5));
     private CancellationTokenSource cts;
     private Task? timerTask;
     private bool pending = false;

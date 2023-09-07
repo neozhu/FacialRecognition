@@ -33,7 +33,7 @@
                     <div class="d-flex flex-row gap-4 mb-2">
                         <MudFileUpload T="IReadOnlyList<IBrowserFile>" Multiple
                                        SuppressOnChangeWhenInvalid="true"
-                                       @bind-Files="model.UploadPhotos" OnFilesChanged="UploadFiles" For="@(() => model.UploadPhotos)">
+                        @bind-Files="model.UploadPhotos" OnFilesChanged="UploadFiles" For="@(() => model.UploadPhotos)">
                             <ButtonTemplate>
                                 <MudLoadingButton Loading="@_uploading" HtmlTag="label" Disabled="_uploading"
                                                   Variant="Variant.Filled"
@@ -72,14 +72,15 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">@ConstantString.Cancel</MudButton>
-        <MudLoadingButton Loading="@_saving" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
-        <MudButton Loading="@_saving" Color="MudBlazor.Color.Primary" OnClick="Submit">@ConstantString.Save</MudButton>
+        <MudLoadingButton Loading="@_savingandnew" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
+        <MudLoadingButton Loading="@_saving" Color="MudBlazor.Color.Primary" OnClick="Submit">@ConstantString.Save</MudLoadingButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     MudForm? _form;
     private bool _saving = false;
+    private bool _savingandnew = false;
     [CascadingParameter]
     MudDialogInstance MudDialog { get; set; } = default!;
     AddEditVisitorCommandValidator _modelValidator = new();
@@ -133,13 +134,16 @@
                     {
                         using (var image = Image.Load(imgStream))
                         {
-                            image.Mutate(
-                                i => i.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(720, 720) }));
+                            if (image.Width > 720 || image.Height > 720)
+                            {
+                                image.Mutate(
+                                    i => i.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(720, 720) }));
+                            }
                             image.Save(outStream, PngFormat.Instance);
                             var filename = file.Name;
                             var fi = new FileInfo(filename);
                             var ext = fi.Extension;
-                            var result = await UploadService.UploadAsync(new UploadRequest(Guid.NewGuid() + ext, UploadType.Photos, outStream.ToArray()));
+                            var result = await UploadService.UploadAsync(new UploadRequest(Guid.NewGuid() + ".png", UploadType.Photos, outStream.ToArray()));
                             list.Add(new Photo { Name = filename, Size = outStream.Length, Url = result });
                         }
                     }
@@ -190,7 +194,7 @@
     {
         try
         {
-            _saving = true;
+            _savingandnew = true;
             await _form!.Validate().ConfigureAwait(false);
             if (!_form!.IsValid)
                 return;
@@ -208,7 +212,7 @@
         }
         finally
         {
-            _saving = false;
+            _savingandnew = false;
         }
     }
     void Cancel() => MudDialog.Cancel();

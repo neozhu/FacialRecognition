@@ -6,6 +6,8 @@ using CleanArchitecture.Blazor.Application.Features.Visitors.Caching;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Http;
 using System.Net.Http;
+using CleanArchitecture.Blazor.Application.Services.CompreFace;
+using Exadel.Compreface.DTOs.FaceCollectionDTOs.AddSubjectExample;
 
 namespace CleanArchitecture.Blazor.Application.Features.Visitors.Commands.AddEdit;
 
@@ -40,18 +42,18 @@ public class AddEditVisitorCommand : IMapFrom<VisitorDto>, ICacheInvalidatorRequ
 
 public class AddEditVisitorCommandHandler : IRequestHandler<AddEditVisitorCommand, Result<int>>
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly CompreFaceService _compreFaceService;
     private readonly IApplicationDbContext _context;
     private readonly IMapper _mapper;
     private readonly IStringLocalizer<AddEditVisitorCommandHandler> _localizer;
     public AddEditVisitorCommandHandler(
-        IHttpClientFactory httpClientFactory,
+        CompreFaceService compreFaceService,
         IApplicationDbContext context,
         IStringLocalizer<AddEditVisitorCommandHandler> localizer,
         IMapper mapper
         )
     {
-        _httpClientFactory = httpClientFactory;
+        _compreFaceService = compreFaceService;
         _context = context;
         _localizer = localizer;
         _mapper = mapper;
@@ -74,6 +76,7 @@ public class AddEditVisitorCommandHandler : IRequestHandler<AddEditVisitorComman
             var item = _mapper.Map<Visitor>(dto);
             var result = await uploadPhoto(dto.Photos.First().Url, dto.Name);
             // raise a create domain event
+            item.ExternalId = result;
             item.Description = result;
             item.AddDomainEvent(new VisitorCreatedEvent(item));
             _context.Visitors.Add(item);
@@ -90,19 +93,10 @@ public class AddEditVisitorCommandHandler : IRequestHandler<AddEditVisitorComman
             bool exists = File.Exists(photofile);
             if (exists)
             {
-                var filename = Path.GetFileName(photofile);
-                var fileContent = await File.ReadAllBytesAsync(photofile);
-                var content = new MultipartFormDataContent();
-                content.Add(new ByteArrayContent(fileContent), "file", filename);
-                using (var client = _httpClientFactory.CreateClient("Insightface"))
-                {
-                    var queryString = new Dictionary<string, string> { { "name", name } };
-                    var requestpara = new FormUrlEncodedContent(queryString).ReadAsStringAsync().Result;
-                    var httpResponseMessage = await client.PostAsync("/add?" + requestpara, content);
-                    //httpResponseMessage.EnsureSuccessStatusCode();
-                    var responseContent = await httpResponseMessage.Content.ReadAsStringAsync();
-                    return responseContent;
-                }
+
+                    var response = await _compreFaceService.AddCollection(new AddSubjectExampleRequestByFilePath() { DetProbThreShold = 0.5m, FilePath = url, Subject = name });
+                    return response.ImageId.ToString();
+         
             }
             return $"no exists photo:{url}";
         }

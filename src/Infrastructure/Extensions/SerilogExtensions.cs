@@ -24,8 +24,9 @@ public static class SerilogExtensions
             configuration.ReadFrom.Configuration(context.Configuration)
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Error)
                 .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Error)
-                .MinimumLevel.Override("Serilog", LogEventLevel.Information)
-                .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Update", LogEventLevel.Error)
+                .MinimumLevel.Override("MudBlazor", LogEventLevel.Information)
+                .MinimumLevel.Override("Serilog", LogEventLevel.Error)
+                .MinimumLevel.Override("Microsoft.EntityFrameworkCore.AddOrUpdate", LogEventLevel.Error)
                 .MinimumLevel.Override("Hangfire.BackgroundJobServer", LogEventLevel.Error)
                 .MinimumLevel.Override("Hangfire.Server.BackgroundServerProcess", LogEventLevel.Error)
                 .MinimumLevel.Override("Hangfire.Server.ServerHeartbeatProcess", LogEventLevel.Error)
@@ -75,7 +76,8 @@ public static class SerilogExtensions
 
         if (privacySettings == null) return;
         if (privacySettings.LogClientIpAddresses) serilogConfig.Enrich.WithClientIp();
-        if (privacySettings.LogClientAgents) serilogConfig.Enrich.WithClientAgent();
+        if (privacySettings.LogClientAgents) serilogConfig.Enrich.WithRequestHeader("User-Agent");
+
     }
 
     private static void WriteToSqlServer(LoggerConfiguration serilogConfig, string? connectionString)
@@ -171,12 +173,12 @@ public static class SerilogExtensions
     private static void WriteToSqLite(LoggerConfiguration serilogConfig, string? connectionString)
     {
         if (string.IsNullOrEmpty(connectionString)) return;
-        connectionString = "D:\\github\\FacialRecognition\\src\\Blazor.Server.UI\\FacialRecognition.db";
+
         const string tableName = "Loggers";
         serilogConfig.WriteTo.Async(wt => wt.SQLite(
             connectionString,
             tableName,
-            LogEventLevel.Debug
+            LogEventLevel.Information
         ));
     }
 

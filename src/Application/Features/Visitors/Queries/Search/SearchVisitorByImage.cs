@@ -11,6 +11,12 @@ using SixLabors.ImageSharp.Formats.Png;
 using MimeKit;
 using CleanArchitecture.Blazor.Application.Common.Interfaces;
 using DocumentFormat.OpenXml.Drawing;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using Flurl;
+using Path = System.IO.Path;
+using CleanArchitecture.Blazor.Application.Services.CompreFace;
+using Exadel.Compreface.DTOs.RecognizeFaceFromImageDTOs.RecognizeFaceFromImage;
+using Exadel.Compreface.DTOs.FaceDetectionDTOs.FaceDetection;
 
 namespace CleanArchitecture.Blazor.Application.Features.Visitors.Queries.GetById;
 
@@ -23,24 +29,24 @@ public class SearchVisitorByImage : IRequest<Result<VisitorDto>>
 public class SearchVisitorByImageHandler :
      IRequestHandler<SearchVisitorByImage, Result<VisitorDto>>
 {
+    private readonly CompreFaceService _compreFaceService;
     private readonly IUploadService _uploadService;
-    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IApplicationDbContext _context;
     private readonly IMapper _mapper;
     private readonly ILogger<SearchVisitorByImageHandler> _logger;
     private readonly IStringLocalizer<SearchVisitorByImageHandler> _localizer;
 
     public SearchVisitorByImageHandler(
+         CompreFaceService compreFaceService,
         IUploadService uploadService,
-        IHttpClientFactory httpClientFactory,
         IApplicationDbContext context,
         IMapper mapper,
         ILogger<SearchVisitorByImageHandler> logger,
         IStringLocalizer<SearchVisitorByImageHandler> localizer
         )
     {
+        _compreFaceService = compreFaceService;
         _uploadService = uploadService;
-        _httpClientFactory = httpClientFactory;
         _context = context;
         _mapper = mapper;
         _logger = logger;
@@ -50,7 +56,7 @@ public class SearchVisitorByImageHandler :
     public async Task<Result<VisitorDto>> Handle(SearchVisitorByImage request, CancellationToken cancellationToken)
     {
 
-        var name =await searchFace(request.ImageDataString);
+        var name = await searchFace(request.ImageDataString);
         if (string.IsNullOrEmpty(name))
         {
             return await Result<VisitorDto>.FailureAsync(new string[] { "No record was matched" });
@@ -65,49 +71,32 @@ public class SearchVisitorByImageHandler :
         try
         {
             byte[] imageData = Convert.FromBase64String(imagedatastr.Split(',')[1]);
-            using (var outstream = new MemoryStream()) {
-                using (var image = Image.Load(imageData))
+            try
+            {
+                try
                 {
-                    image.Mutate(x => x
-                        .Flip(FlipMode.Horizontal) //To match mirrored webcam image
-                    );
-                    image.Save(outstream, PngFormat.Instance);
-                }
-                var filename = $"{Guid.NewGuid()}.jpg";
-                var content = new MultipartFormDataContent();
-                content.Add(new ByteArrayContent(outstream.ToArray()), "file", filename);
-                using (var client = _httpClientFactory.CreateClient("Insightface"))
-                {
-                    try
+                    var detRes = await _compreFaceService.DetectFace(new FaceDetectionRequestByBytes() { DetProbThreshold = 0.5m, ImageInBytes = imageData });
+
+                    if (detRes.Result.Any())
                     {
-                        var queryString = new Dictionary<string, string> { { "limit", "1" } };
-                    var requestpara =await (new FormUrlEncodedContent(queryString)).ReadAsStringAsync();
-                    var httpResponseMessage = await client.PostAsync("/face-search?" + requestpara, content);
-                    //httpResponseMessage.EnsureSuccessStatusCode();
-                   
-                        var responseContent = await httpResponseMessage.Content.ReadAsStringAsync();
-                        _logger.LogInformation(responseContent);
-                        var result = JsonSerializer.Deserialize<facesearchResponse>(responseContent);
-                        if (result.status_code == 200)
-                        {
-                            return result.result.similar_faces.FirstOrDefault()?.name;
-                        }
-                        else
-                        {
-                            return string.Empty;
-                        }
-                    }catch(Exception e)
-                    {
-                        _logger.LogError(e, "searchFace error");
-                        return string.Empty;
+                        var response = await _compreFaceService.RecognizeFace(new RecognizeFaceFromImageRequestByBytes() { DetProbThreshold = 0.5m, ImageInBytes = imageData });
+                        var username = response.Result.First().Subjects.First().Subject;
+                        return username;
                     }
-                    
                 }
+                catch
+                {
+
+                }
+
             }
-
-           
-
+            catch (Exception e)
+            {
+                _logger.LogError(e, "RecognizeFace Error");
+            }
             
+            return string.Empty;
+
         }
         catch (Exception e)
         {
@@ -117,7 +106,7 @@ public class SearchVisitorByImageHandler :
     }
     internal class facesearchResponse
     {
-        public int status_code { get; set; }    
+        public int status_code { get; set; }
         public facesearchResult result { get; set; }
     }
     internal class facesearchResult

@@ -14,6 +14,7 @@ namespace CleanArchitecture.Blazor.Domain.Entities
         public string? Description { get; set; }
         public string? PurposeOfVisit { get; set; }
         public string? Documentation { get; set; }
+        public string? ExternalId { get; set; }
         public DateTime? DateOfVisit { get; set; }
         public VisitStatus Status { get; set; } = VisitStatus.New;
         public List<Photo>? Photos { get; set; } = null!;
