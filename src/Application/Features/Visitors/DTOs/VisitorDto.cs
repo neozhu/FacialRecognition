@@ -33,5 +33,7 @@ public class VisitorDto:IMapFrom<Visitor>
     [Description("VisitHistories")]
     public List<VisitHistory>? VisitHistories { get; set; }
 
+    public string? ExternalId { get; set; }
+
 }
 

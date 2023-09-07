@@ -72,14 +72,15 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">@ConstantString.Cancel</MudButton>
-        <MudLoadingButton Loading="@_saving" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
-        <MudButton Loading="@_saving" Color="MudBlazor.Color.Primary" OnClick="Submit">@ConstantString.Save</MudButton>
+        <MudLoadingButton Loading="@_savingandnew" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
+        <MudLoadingButton Loading="@_saving" Color="MudBlazor.Color.Primary" OnClick="Submit">@ConstantString.Save</MudLoadingButton>
     </DialogActions>
 </MudDialog>
 
 @code {
     MudForm? _form;
     private bool _saving = false;
+    private bool _savingandnew = false;
     [CascadingParameter]
     MudDialogInstance MudDialog { get; set; } = default!;
     AddEditVisitorCommandValidator _modelValidator = new();
@@ -193,7 +194,7 @@
     {
         try
         {
-            _saving = true;
+            _savingandnew = true;
             await _form!.Validate().ConfigureAwait(false);
             if (!_form!.IsValid)
                 return;
@@ -211,7 +212,7 @@
         }
         finally
         {
-            _saving = false;
+            _savingandnew = false;
         }
     }
     void Cancel() => MudDialog.Cancel();

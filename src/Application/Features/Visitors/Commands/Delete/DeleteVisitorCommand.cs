@@ -4,7 +4,7 @@
 using CleanArchitecture.Blazor.Application.Features.Visitors.DTOs;
 using CleanArchitecture.Blazor.Application.Features.Visitors.Caching;
 using System.Net.Http;
-
+using CleanArchitecture.Blazor.Application.Services.CompreFace;
 
 namespace CleanArchitecture.Blazor.Application.Features.Visitors.Commands.Delete;
 
@@ -24,18 +24,18 @@ public class DeleteVisitorCommandHandler :
              IRequestHandler<DeleteVisitorCommand, Result<int>>
 
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly CompreFaceService _compreFaceService;
     private readonly IApplicationDbContext _context;
     private readonly IMapper _mapper;
     private readonly IStringLocalizer<DeleteVisitorCommandHandler> _localizer;
     public DeleteVisitorCommandHandler(
-         IHttpClientFactory httpClientFactory,
+        CompreFaceService compreFaceService,
         IApplicationDbContext context,
         IStringLocalizer<DeleteVisitorCommandHandler> localizer,
          IMapper mapper
         )
     {
-        _httpClientFactory = httpClientFactory;
+        _compreFaceService = compreFaceService;
         _context = context;
         _localizer = localizer;
         _mapper = mapper;
@@ -47,39 +47,23 @@ public class DeleteVisitorCommandHandler :
         {
             // raise a delete domain event
             item.AddDomainEvent(new VisitorDeletedEvent(item));
-            await deletePhoto(item.Photos.First().Url, item.Name);
+            await deletePhoto(item.Name);
             _context.Visitors.Remove(item);
         }
         var result = await _context.SaveChangesAsync(cancellationToken);
         return await Result<int>.SuccessAsync(result);
     }
 
-    private async Task<string> deletePhoto(string url, string name)
+    private async Task deletePhoto(string subject)
     {
         try
         {
-            var photofile = Path.Combine(Directory.GetCurrentDirectory(), url);
-            bool exists = File.Exists(photofile);
-            if (exists)
-            {
-                var filename = Path.GetFileName(photofile);
-                var fileContent = await File.ReadAllBytesAsync(photofile);
-                File.Delete(photofile);
-                using (var client = _httpClientFactory.CreateClient("Insightface"))
-                {
-                    var queryString = new Dictionary<string, string> { { "name", name.ToLower() } };
-                    var requestpara = new FormUrlEncodedContent(queryString).ReadAsStringAsync().Result;
-                    var httpResponseMessage = await client.DeleteAsync("/delete?" + requestpara);
-                    var responseContent = await httpResponseMessage.Content.ReadAsStringAsync();
-                    return responseContent;
-                }
-               
-            }
-            return $"no exists photo:{url}";
+            var result = await _compreFaceService.DeleteCollection(new Exadel.Compreface.DTOs.FaceCollectionDTOs.DeleteAllSubjectExamples.DeleteAllExamplesRequest() { Subject= subject });
+
         }
         catch (Exception e)
         {
-            return e.Message;
+            
         }
 
     }

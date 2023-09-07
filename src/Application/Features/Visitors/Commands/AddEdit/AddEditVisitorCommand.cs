@@ -76,6 +76,7 @@ public class AddEditVisitorCommandHandler : IRequestHandler<AddEditVisitorComman
             var item = _mapper.Map<Visitor>(dto);
             var result = await uploadPhoto(dto.Photos.First().Url, dto.Name);
             // raise a create domain event
+            item.ExternalId = result;
             item.Description = result;
             item.AddDomainEvent(new VisitorCreatedEvent(item));
             _context.Visitors.Add(item);
@@ -94,7 +95,7 @@ public class AddEditVisitorCommandHandler : IRequestHandler<AddEditVisitorComman
             {
 
                     var response = await _compreFaceService.AddCollection(new AddSubjectExampleRequestByFilePath() { DetProbThreShold = 0.5m, FilePath = url, Subject = name });
-                    return response.Subject;
+                    return response.ImageId.ToString();
          
             }
             return $"no exists photo:{url}";
