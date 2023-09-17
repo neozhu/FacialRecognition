@@ -5,8 +5,12 @@
 @using System.Collections.Concurrent;
 @using System.Timers
 @using System.Threading.Tasks
-<MudCard>
+<MudCard Outlined="true">
     <div class="Camera">
+        @if (isRunning)
+        {
+            <MudProgressLinear Color="Color.Secondary" Indeterminate="true" Class="pa-0 ma-0" />
+        }
         <CameraStreamer @ref="CameraStreamerReference"
                         Width="370"
                         Height="280"
@@ -14,10 +18,7 @@
                         Style="width: 370px; height: 280px;"
                         CameraID=@cameraId
                         Autostart="true" />
-        @if (isRunning)
-        {
-            <MudProgressLinear Color="Color.Secondary" Indeterminate="true" Class="pa-0 ma-0" />
-        }
+        
     </div>
     <MudCardHeader>
         <CardHeaderContent>
@@ -36,7 +37,7 @@
         else if (searching && visitor==null)
         {
             <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" Animation="Animation.Wave" />
-            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="110px" Animation="Animation.Wave" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="180px" Animation="Animation.Wave" />
         }
         else if (visitor!=null)
         {
@@ -78,7 +79,35 @@
     </MudItem>
     </MudGrid>
     </MudPaper>
+<style>
+    *, ::after, ::before {
+        box-sizing: border-box;
+    }
+    .Camera{
+        border-bottom: 3px dashed var(--mud-palette-divider);
+        position: relative;
+    }
 
+        .Camera:after {
+        right: 0;
+        transform: translate(70%, -45%);
+    }
+
+    .Camera:before{
+        left: 0;
+        transform: translate(-70%, -45%);
+    }
+
+    .Camera:before, .Camera:after {
+            background-color: var(--mud-palette-background);
+        border-radius: 100%;
+        content: "";
+        height: 15px;
+        position: absolute;
+        top: 100%;
+        width: 20px;
+    }
+</style>
 @code {
     [Inject]
     private IMediator _mediator { get; set; } = default!;
