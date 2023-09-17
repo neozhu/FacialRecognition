@@ -272,7 +272,7 @@
     </ErrorContent>
 </ErrorBoundary>
 
-                @code {
+ @code {
     [Inject]
     private IUsersStateContainer UsersStateContainer { get; set; } = default!;
     private int _defaultPageSize = 15;
@@ -340,7 +340,7 @@
     }
     private bool isOnline(string username)
     {
-        return UsersStateContainer.UsersByConnectionId.Any(x => x.Value.Equals(username, StringComparison.OrdinalIgnoreCase));
+        return false;
     }
 
     private async Task<GridData<ApplicationUserDto>> ServerReload(GridState<ApplicationUserDto> state)
